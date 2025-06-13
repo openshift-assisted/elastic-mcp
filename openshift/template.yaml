@@ -1,0 +1,67 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: elastic-mcp-server
+objects:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: elastic-mcp-server
+  spec:
+    selector:
+      matchLabels:
+        app: elastic-mcp-server
+    replicas: ${{NUMBER_OF_REPLICAS}}
+    template:
+      metadata:
+        labels:
+          app: elastic-mcp-server
+      spec:
+        containers:
+          - name: elastic-mcp-server
+            image: ${IMAGE_NAME}:${IMAGE_TAG}
+            imagePullPolicy: Always
+            ports:
+              - name: mcp-server-port
+                containerPort: ${{MCP_SERVER_PORT}}
+            env:
+            - name: OPENSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  key: username
+                  name: elasitcsearch-mcp-server
+            - name: OPENSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: elasitcsearch-mcp-server
+            - name: OPENSEARCH_URL
+              valueFrom:
+                secretKeyRef:
+                  key: endpoint
+                  name: assisted-installer-elasticsearch
+
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: elastic-mcp-server
+    name: elastic-mcp-server
+  spec:
+    ports:
+      - name: mcp-server-port
+        port: ${{MCP_SERVER_PORT}}
+        protocol: TCP
+        targetPort: ${{MCP_SERVER_PORT}}
+    selector:
+      app: elastic-mcp-server
+
+parameters:
+- name: IMAGE_NAME
+  value: "quay.io/redhat-user-workloads/assisted-installer-tenant/elastic-mcp/elastic-mcp"
+- name: IMAGE_TAG
+  value: "v1"
+- name: NUMBER_OF_REPLICAS
+  value: "1"
+- name: MCP_SERVER_PORT
+  value: "9900"
