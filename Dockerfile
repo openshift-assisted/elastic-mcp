@@ -17,6 +17,11 @@ LABEL maintainer "Red Hat"
 
 RUN pip3 install opensearch-mcp-server-py
 
+USER 0
+RUN mkdir /licenses/ && chown 1001:0 /licenses/
+USER 1001
+COPY LICENSE /licenses/
+
 EXPOSE 9900
 
 ENTRYPOINT ["python", "-m", "mcp_server_opensearch", "--transport", "sse"]
