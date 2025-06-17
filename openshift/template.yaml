@@ -29,25 +29,25 @@ objects:
             - name: OPENSEARCH_USERNAME
               valueFrom:
                 secretKeyRef:
-                  key: ${{ELASTIC_MCP_SECRET_UNAME}}
-                  name: ${{ELASTIC_MCP_SECRET}}
+                  key: ${ELASTIC_MCP_SECRET_UNAME}
+                  name: ${ELASTIC_MCP_SECRET}
             - name: OPENSEARCH_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  key: ${{ELASTIC_MCP_SECRET_PASSWD}}
-                  name: ${{ELASTIC_MCP_SECRET}}
+                  key: ${ELASTIC_MCP_SECRET_PASSWD}
+                  name: ${ELASTIC_MCP_SECRET}
             - name: OPENSEARCH_URL
               valueFrom:
                 secretKeyRef:
                   key: endpoint
-                  name: ${{ELASTIC_ENDPOINT_SECRET}}
+                  name: ${ELASTIC_ENDPOINT_SECRET}
 
 - apiVersion: v1
   kind: Service
   metadata:
     labels:
       app: elastic-mcp-server
-    name: ${{ELASTIC_MCP_SERVER_HOSTNAME}}
+    name: ${ELASTIC_MCP_SERVER_HOSTNAME}
   spec:
     ports:
       - name: mcp-server-port
@@ -77,7 +77,7 @@ objects:
         serviceAccountName: elastic-mcp-proxy
         containers:
         - name: elastic-mcp-proxy
-          image: ${{OAUTH_IMAGE}}:${{OAUTH_IMAGE_TAG}}
+          image: ${OAUTH_IMAGE}:${OAUTH_IMAGE_TAG}
           imagePullPolicy: IfNotPresent
           ports:
           - containerPort: ${{OAUTH_PORT}}
@@ -100,23 +100,18 @@ objects:
               cpu: 50m
               memory: 100Mi
           args:
-          - --http-address=0.0.0.0:${{OAUTH_PORT}}
+          - --http-address=0.0.0.0:${OAUTH_PORT}
           - --provider=openshift
           - --openshift-service-account=elastic-mcp-proxy
-          - --upstream=${{ELASTIC_MCP_SERVER_HOSTNAME}}:${{MCP_SERVER_PORT}}
+          - --upstream=http://${ELASTIC_MCP_SERVER_HOSTNAME}:${MCP_SERVER_PORT}
           - --https-address=
           - --pass-basic-auth=false
-          - --openshift-sar={"namespace":"${{NAMESPACE}}","resource":"services","name":"elastic-mcp-proxy","verb":"get"}
+          - --openshift-sar={"namespace":"$(NAMESPACE)","resource":"services","name":"elastic-mcp-proxy","verb":"get"}
           env:
           - name: NAMESPACE
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-          - name: ENDPOINT
-            valueFrom:
-              secretKeyRef:
-                key: ${{ELASTIC_ENDPOINT_SECRET_KEY}}
-                name: ${{ELASTIC_ENDPOINT_SECRET}}
           - name: OAUTH2_PROXY_COOKIE_SECRET
             valueFrom:
               secretKeyRef:
