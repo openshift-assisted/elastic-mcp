@@ -17,6 +17,7 @@ objects:
         labels:
           app: elastic-mcp-server
       spec:
+        restartPolicy: Always
         containers:
           - name: elastic-mcp-server
             image: ${IMAGE_NAME}:${IMAGE_TAG}
@@ -28,18 +29,18 @@ objects:
             - name: OPENSEARCH_USERNAME
               valueFrom:
                 secretKeyRef:
-                  key: username
-                  name: elasitcsearch-mcp-server
+                  key: ${{ELASTIC_MCP_SECRET_UNAME}}
+                  name: ${{ELASTIC_MCP_SECRET}}
             - name: OPENSEARCH_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  key: password
-                  name: elasitcsearch-mcp-server
+                  key: ${{ELASTIC_MCP_SECRET_PASSWD}}
+                  name: ${{ELASTIC_MCP_SECRET}}
             - name: OPENSEARCH_URL
               valueFrom:
                 secretKeyRef:
                   key: endpoint
-                  name: assisted-installer-elasticsearch
+                  name: ${{ELASTIC_ENDPOINT_SECRET}}
 
 - apiVersion: v1
   kind: Service
@@ -56,12 +57,111 @@ objects:
     selector:
       app: elastic-mcp-server
 
+
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: elastic-mcp
+    labels:
+      app: elastic-mcp
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: elastic-mcp
+    template:
+      metadata:
+        labels:
+          app: elastic-mcp
+      spec:
+        serviceAccountName: elastic-mcp-proxy
+        containers:
+        - name: elastic-mcp-proxy
+          image: ${{OAUTH_IMAGE}}:${{OAUTH_IMAGE_TAG}}
+          imagePullPolicy: IfNotPresent
+          ports:
+          - containerPort: ${{OAUTH_PORT}}
+            name: http
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /oauth/healthz
+              port: http
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 50m
+              memory: 100Mi
+            requests:
+              cpu: 50m
+              memory: 100Mi
+          args:
+          - --http-address=0.0.0.0:${{OAUTH_PORT}}
+          - --provider=openshift
+          - --openshift-service-account=elastic-mcp-proxy
+          - --upstream=elastic-mcp-server:${{MCP_SERVER_PORT}}
+          - --https-address=
+          - --pass-basic-auth=false
+          - --openshift-sar={"namespace":"${{NAMESPACE}}","resource":"services","name":"elastic-mcp-proxy","verb":"get"}
+          env:
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: ENDPOINT
+            valueFrom:
+              secretKeyRef:
+                key: ${{ELASTIC_ENDPOINT_SECRET_KEY}}
+                name: ${{ELASTIC_ENDPOINT_SECRET}}
+          - name: OAUTH2_PROXY_COOKIE_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: session_secret
+                name: kibana-oauth-application
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: elastic-mcp-proxy
+    name: elastic-mcp-proxy
+  spec:
+    ports:
+    - port: ${{OAUTH_PORT}}
+      protocol: TCP
+      targetPort: ${{OAUTH_PORT}}
+    selector:
+      app: elastic-mcp
+    sessionAffinity: None
+    type: ClusterIP
+
 parameters:
 - name: IMAGE_NAME
   value: "quay.io/redhat-user-workloads/assisted-installer-tenant/elastic-mcp/elastic-mcp"
 - name: IMAGE_TAG
-  value: "v1"
+  required: true
 - name: NUMBER_OF_REPLICAS
   value: "1"
 - name: MCP_SERVER_PORT
   value: "9900"
+- name: ELASTIC_MCP_SECRET
+  value: "elasitcsearch-mcp-server"
+- name: ELASTIC_MCP_SECRET_PASSWD
+  value: "password"
+- name: ELASTIC_MCP_SECRET_UNAME
+  value: "username"
+- name: ELASTIC_ENDPOINT_SECRET
+  value: "assisted-installer-elasticsearch"
+- name: ELASTIC_ENDPOINT_SECRET_KEY
+  value: "endpoint"
+- name: OAUTH_IMAGE
+  value: quay.io/openshift/origin-oauth-proxy
+- name: OAUTH_IMAGE_TAG
+  value: 4.18.0
+- name: OAUTH_PORT
+  value: "9900"
+- name: MCP_ROUTE_ENDPOINT
+  value: "opensearch-mcp-integration.apps.app-sre-stage-0.k3s7.p1.openshiftapps.com"
