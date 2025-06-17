@@ -103,7 +103,7 @@ objects:
           - --http-address=0.0.0.0:${OAUTH_PORT}
           - --provider=openshift
           - --openshift-service-account=elastic-mcp-proxy
-          - --upstream=http://${ELASTIC_MCP_SERVER_HOSTNAME}:${MCP_SERVER_PORT}/sse
+          - --upstream=http://${ELASTIC_MCP_SERVER_HOSTNAME}:${MCP_SERVER_PORT}
           - --https-address=
           - --pass-basic-auth=false
           - --openshift-sar={"namespace":"$(NAMESPACE)","resource":"services","name":"elastic-mcp-proxy","verb":"get"}
