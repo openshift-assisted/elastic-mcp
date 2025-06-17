@@ -47,7 +47,7 @@ objects:
   metadata:
     labels:
       app: elastic-mcp-server
-    name: elastic-mcp-server
+    name: ${{ELASTIC_MCP_SERVER_HOSTNAME}}
   spec:
     ports:
       - name: mcp-server-port
@@ -103,7 +103,7 @@ objects:
           - --http-address=0.0.0.0:${{OAUTH_PORT}}
           - --provider=openshift
           - --openshift-service-account=elastic-mcp-proxy
-          - --upstream=elastic-mcp-server:${{MCP_SERVER_PORT}}
+          - --upstream=${{ELASTIC_MCP_SERVER_HOSTNAME}}:${{MCP_SERVER_PORT}}
           - --https-address=
           - --pass-basic-auth=false
           - --openshift-sar={"namespace":"${{NAMESPACE}}","resource":"services","name":"elastic-mcp-proxy","verb":"get"}
@@ -165,3 +165,5 @@ parameters:
   value: "9900"
 - name: MCP_ROUTE_ENDPOINT
   value: "opensearch-mcp-integration.apps.app-sre-stage-0.k3s7.p1.openshiftapps.com"
+- name: ELASTIC_MCP_SERVER_HOSTNAME
+  value: "elastic-mcp-server"
