@@ -61,18 +61,18 @@ objects:
 - apiVersion: apps/v1
   kind: Deployment
   metadata:
-    name: elastic-mcp
+    name: elastic-mcp-proxy
     labels:
-      app: elastic-mcp
+      app: elastic-mcp-proxy
   spec:
     replicas: 1
     selector:
       matchLabels:
-        app: elastic-mcp
+        app: elastic-mcp-proxy
     template:
       metadata:
         labels:
-          app: elastic-mcp
+          app: elastic-mcp-proxy
       spec:
         serviceAccountName: elastic-mcp-proxy
         containers:
@@ -81,13 +81,13 @@ objects:
           imagePullPolicy: IfNotPresent
           ports:
           - containerPort: ${{OAUTH_PORT}}
-            name: http
+            name: mcp-proxy-port
             protocol: TCP
           readinessProbe:
             failureThreshold: 3
             httpGet:
               path: /oauth/healthz
-              port: http
+              port: mcp-proxy-port
               scheme: HTTP
             periodSeconds: 10
             successThreshold: 1
@@ -103,7 +103,7 @@ objects:
           - --http-address=0.0.0.0:${OAUTH_PORT}
           - --provider=openshift
           - --openshift-service-account=elastic-mcp-proxy
-          - --upstream=http://${ELASTIC_MCP_SERVER_HOSTNAME}:${MCP_SERVER_PORT}
+          - --upstream=https://google.com
           - --https-address=
           - --pass-basic-auth=false
           - --openshift-sar={"namespace":"$(NAMESPACE)","resource":"services","name":"elastic-mcp-proxy","verb":"get"}
@@ -115,8 +115,8 @@ objects:
           - name: OAUTH2_PROXY_COOKIE_SECRET
             valueFrom:
               secretKeyRef:
-                key: session_secret
-                name: kibana-oauth-application
+                key: session-cookie
+                name: elasitcsearch-mcp-server
 - apiVersion: v1
   kind: Service
   metadata:
@@ -129,7 +129,7 @@ objects:
       protocol: TCP
       targetPort: ${{OAUTH_PORT}}
     selector:
-      app: elastic-mcp
+      app: elastic-mcp-proxy
     sessionAffinity: None
     type: ClusterIP
 
