@@ -22,9 +22,6 @@ objects:
           - name: elastic-mcp-server
             image: ${IMAGE_NAME}:${IMAGE_TAG}
             imagePullPolicy: Always
-            ports:
-              - name: mcp-server-port
-                containerPort: ${{MCP_SERVER_PORT}}
             env:
             - name: OPENSEARCH_USERNAME
               valueFrom:
@@ -41,87 +38,54 @@ objects:
                 secretKeyRef:
                   key: endpoint
                   name: ${ELASTIC_ENDPOINT_SECRET}
+          - name: elastic-mcp-proxy
+            image: ${OAUTH_IMAGE}:${OAUTH_IMAGE_TAG}
+            imagePullPolicy: IfNotPresent
+            ports:
+            - containerPort: ${{OAUTH_PORT}}
+              name: mcp-proxy-port
+              protocol: TCP
+            readinessProbe:
+              failureThreshold: 3
+              httpGet:
+                path: /oauth/healthz
+                port: mcp-proxy-port
+                scheme: HTTP
+              periodSeconds: 10
+              successThreshold: 1
+              timeoutSeconds: 1
+            resources:
+              limits:
+                cpu: 50m
+                memory: 100Mi
+              requests:
+                cpu: 50m
+                memory: 100Mi
+            args:
+            - --http-address=0.0.0.0:${OAUTH_PORT}
+            - --provider=openshift
+            - --openshift-service-account=elastic-mcp-proxy
+            - --upstream=http://localhost:${MCP_SERVER_PORT}
+            - --https-address=
+            - --pass-basic-auth=false
+            - --openshift-sar={"namespace":"$(NAMESPACE)","resource":"services","resourceName":"elastic-mcp-proxy","verb":"get"}
+            env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: ${SESSION_COOKIE_KEY}
+                  name: ${SESSION_COOKIE_SECRET}
 
+        
 - apiVersion: v1
   kind: Service
   metadata:
     labels:
       app: elastic-mcp-server
-    name: ${ELASTIC_MCP_SERVER_HOSTNAME}
-  spec:
-    ports:
-      - name: mcp-server-port
-        port: ${{MCP_SERVER_PORT}}
-        protocol: TCP
-        targetPort: ${{MCP_SERVER_PORT}}
-    selector:
-      app: elastic-mcp-server
-
-
-- apiVersion: apps/v1
-  kind: Deployment
-  metadata:
-    name: elastic-mcp-proxy
-    labels:
-      app: elastic-mcp-proxy
-  spec:
-    replicas: 1
-    selector:
-      matchLabels:
-        app: elastic-mcp-proxy
-    template:
-      metadata:
-        labels:
-          app: elastic-mcp-proxy
-      spec:
-        serviceAccountName: elastic-mcp-proxy
-        containers:
-        - name: elastic-mcp-proxy
-          image: ${OAUTH_IMAGE}:${OAUTH_IMAGE_TAG}
-          imagePullPolicy: IfNotPresent
-          ports:
-          - containerPort: ${{OAUTH_PORT}}
-            name: mcp-proxy-port
-            protocol: TCP
-          readinessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /oauth/healthz
-              port: mcp-proxy-port
-              scheme: HTTP
-            periodSeconds: 10
-            successThreshold: 1
-            timeoutSeconds: 1
-          resources:
-            limits:
-              cpu: 50m
-              memory: 100Mi
-            requests:
-              cpu: 50m
-              memory: 100Mi
-          args:
-          - --http-address=0.0.0.0:${OAUTH_PORT}
-          - --provider=openshift
-          - --openshift-service-account=elastic-mcp-proxy
-          - --upstream=https://google.com
-          - --https-address=
-          - --pass-basic-auth=false
-          - --openshift-sar={"namespace":"$(NAMESPACE)","resource":"services","name":"elastic-mcp-proxy","verb":"get"}
-          env:
-          - name: NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          - name: OAUTH2_PROXY_COOKIE_SECRET
-            valueFrom:
-              secretKeyRef:
-                key: session-cookie
-                name: elasitcsearch-mcp-server
-- apiVersion: v1
-  kind: Service
-  metadata:
-    labels:
-      app: elastic-mcp-proxy
     name: elastic-mcp-proxy
   spec:
     ports:
@@ -129,7 +93,7 @@ objects:
       protocol: TCP
       targetPort: ${{OAUTH_PORT}}
     selector:
-      app: elastic-mcp-proxy
+      app: elastic-mcp-server
     sessionAffinity: None
     type: ClusterIP
 
@@ -141,9 +105,13 @@ parameters:
 - name: NUMBER_OF_REPLICAS
   value: "1"
 - name: MCP_SERVER_PORT
-  value: "9900"
+  value: "9901"
 - name: ELASTIC_MCP_SECRET
   value: "elasitcsearch-mcp-server"
+- name: SESSION_COOKIE_SECRET
+  value: "elasitcsearch-mcp-server"
+- name: SESSION_COOKIE_KEY
+  value: "session-cookie"
 - name: ELASTIC_MCP_SECRET_PASSWD
   value: "password"
 - name: ELASTIC_MCP_SECRET_UNAME
@@ -153,12 +121,8 @@ parameters:
 - name: ELASTIC_ENDPOINT_SECRET_KEY
   value: "endpoint"
 - name: OAUTH_IMAGE
-  value: quay.io/openshift/origin-oauth-proxy
+  value: "quay.io/openshift/origin-oauth-proxy"
 - name: OAUTH_IMAGE_TAG
-  value: 4.18.0
+  value: "4.18.0"
 - name: OAUTH_PORT
   value: "9900"
-- name: MCP_ROUTE_ENDPOINT
-  value: "opensearch-mcp-integration.apps.app-sre-stage-0.k3s7.p1.openshiftapps.com"
-- name: ELASTIC_MCP_SERVER_HOSTNAME
-  value: "elastic-mcp-server"
