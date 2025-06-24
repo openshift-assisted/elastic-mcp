@@ -68,6 +68,7 @@ objects:
             - --upstream=http://localhost:${MCP_SERVER_PORT}
             - --https-address=
             - --pass-basic-auth=false
+            - --openshift-delegate-urls={"/sse":{"resource":"elastic-mcp-proxy","verb":"get"}}
             - --openshift-sar={"namespace":"$(NAMESPACE)","resource":"services","resourceName":"elastic-mcp-proxy","verb":"get"}
             env:
             - name: NAMESPACE
