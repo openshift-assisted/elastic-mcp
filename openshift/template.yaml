@@ -18,6 +18,7 @@ objects:
           app: elastic-mcp-server
       spec:
         restartPolicy: Always
+        serviceAccountName: elastic-mcp-proxy
         containers:
           - name: elastic-mcp-server
             image: ${IMAGE_NAME}:${IMAGE_TAG}
