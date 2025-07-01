@@ -24,6 +24,6 @@ COPY LICENSE /licenses/
 
 EXPOSE 9900
 
-ENTRYPOINT ["python", "-m", "mcp_server_opensearch", "--transport", "sse"]
+ENTRYPOINT ["python", "-m", "mcp_server_opensearch", "--transport", "stream"]
 CMD ["--host", "localhost", "--port", "9901"]
 
