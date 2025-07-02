@@ -70,7 +70,6 @@ objects:
             - --https-address=
             - --pass-basic-auth=false
             - --openshift-delegate-urls={"/mcp":{"resource":"elastic-mcp-proxy","verb":"get"}}
-            - --skip-jwt-bearer-tokens=true
             - --openshift-sar={"namespace":"$(NAMESPACE)","resource":"services","resourceName":"elastic-mcp-proxy","verb":"get"}
             env:
             - name: NAMESPACE
