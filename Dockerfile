@@ -16,6 +16,7 @@ LABEL vendor "Red Hat, Inc."
 LABEL maintainer "Red Hat"
 
 RUN pip3 install opensearch-mcp-server-py
+RUN sed -i 's/query: Any = Field/query: str = Field/g' $(pip show opensearch-mcp-server-py|grep 'Location:'|tr -s ' '|cut -d ' ' -f2)/tools/tool_params.py
 
 USER 0
 RUN mkdir /licenses/ && chown 1001:0 /licenses/
