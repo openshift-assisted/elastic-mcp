@@ -15,10 +15,12 @@ LABEL url https://github.com/openshift-assisted/elastic-mcp
 LABEL vendor "Red Hat, Inc."
 LABEL maintainer "Red Hat"
 
+USER 0
 RUN pip3 install opensearch-mcp-server-py
 RUN sed -i 's/query: Any = Field/query: str = Field/g' $(pip show opensearch-mcp-server-py|grep 'Location:'|tr -s ' '|cut -d ' ' -f2)/tools/tool_params.py
+RUN sed -i "/'description': BODY_DESCRIPTIONS.get(op_group, 'Request body'),/a \                'type': 'string'," $(pip show opensearch-mcp-server-py|grep 'Location:'|tr -s ' '|cut -d ' ' -f2)/tools/tool_generator.py
 
-USER 0
+
 RUN mkdir /licenses/ && chown 1001:0 /licenses/
 USER 1001
 COPY LICENSE /licenses/
